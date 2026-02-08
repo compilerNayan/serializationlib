@@ -15,7 +15,7 @@
   "dependencies": {
     "serializationlib": "https://github.com/compilerNayan/serializationlib.git",
     "ArduinoJson" : "https://github.com/bblanchon/ArduinoJson.git",
-    "cppcore": "https://github.com/compilerNayan/cpp_core.git"
+    "cpp_core": "https://github.com/compilerNayan/cpp_core.git"
   },
   "license": "MIT",
   "homepage": "",

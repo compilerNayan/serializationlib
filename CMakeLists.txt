@@ -48,13 +48,13 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(ArduinoJson)
 
-# Fetch cppcore for StandardDefines.h
+# Fetch cpp_core for StandardDefines.h
 FetchContent_Declare(
-    cppcore
+    cpp_core
     GIT_REPOSITORY https://github.com/compilerNayan/cpp_core.git
     GIT_TAG        main  # Use the main branch
 )
-FetchContent_MakeAvailable(cppcore)
+FetchContent_MakeAvailable(cpp_core)
 
 # Create header-only library (INTERFACE library)
 add_library(serializationlib INTERFACE)
@@ -70,12 +70,12 @@ target_include_directories(serializationlib INTERFACE
     $<INSTALL_INTERFACE:include>
 )
 
-# Add cppcore include directory (for StandardDefines.h)
+# Add cpp_core include directory (for StandardDefines.h)
 # Use BUILD_INTERFACE generator expression to properly handle FetchContent paths
-FetchContent_GetProperties(cppcore)
-if(cppcore_SOURCE_DIR)
+FetchContent_GetProperties(cpp_core)
+if(cpp_core_SOURCE_DIR)
     target_include_directories(serializationlib INTERFACE
-        $<BUILD_INTERFACE:${cppcore_SOURCE_DIR}/include>
+        $<BUILD_INTERFACE:${cpp_core_SOURCE_DIR}/include>
     )
 endif()
 
