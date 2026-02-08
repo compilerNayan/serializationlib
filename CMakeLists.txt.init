@@ -1,0 +1,20 @@
+# This file is processed before the main CMakeLists.txt
+# It runs the pre-build script automatically
+# Note: This requires the client to include this file, but provides a way to run the script
+
+find_program(PYTHON_EXECUTABLE python3 python)
+if(PYTHON_EXECUTABLE AND EXISTS "${CMAKE_CURRENT_LIST_DIR}/serializationlib_scripts/serializationlib_pre_build.py")
+    execute_process(
+        COMMAND ${PYTHON_EXECUTABLE} 
+            "${CMAKE_CURRENT_LIST_DIR}/serializationlib_scripts/serializationlib_pre_build.py"
+        WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
+        RESULT_VARIABLE PRE_BUILD_RESULT
+        OUTPUT_VARIABLE PRE_BUILD_OUTPUT
+        ERROR_VARIABLE PRE_BUILD_ERROR
+        ERROR_QUIET
+    )
+    if(PRE_BUILD_OUTPUT)
+        message(STATUS "serializationlib pre-build: ${PRE_BUILD_OUTPUT}")
+    endif()
+endif()
+

@@ -1,0 +1,27 @@
+{
+  "name": "serializationlib",
+  "version": "1.0.0",
+  "description": "A simple PlatformIO library that provides an add function",
+  "keywords": "math, utility",
+  "authors": [
+    {
+      "name": "Nayan"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/compilerNayan/serializationlib.git"
+  },
+  "dependencies": {
+    "serializationlib": "https://github.com/compilerNayan/serializationlib.git",
+    "ArduinoJson" : "https://github.com/bblanchon/ArduinoJson.git",
+    "cppcore": "https://github.com/compilerNayan/arduinolib0.git"
+  },
+  "license": "MIT",
+  "homepage": "",
+  "frameworks": "arduino",
+  "platforms": "*",
+  "build": {
+    "extraScript": "serializationlib_scripts/serializationlib_pre_build.py"
+  }
+}
