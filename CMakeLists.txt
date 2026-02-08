@@ -51,7 +51,7 @@ FetchContent_MakeAvailable(ArduinoJson)
 # Fetch cppcore for StandardDefines.h
 FetchContent_Declare(
     cppcore
-    GIT_REPOSITORY https://github.com/compilerNayan/arduinolib0.git
+    GIT_REPOSITORY https://github.com/compilerNayan/cpp_core.git
     GIT_TAG        main  # Use the main branch
 )
 FetchContent_MakeAvailable(cppcore)

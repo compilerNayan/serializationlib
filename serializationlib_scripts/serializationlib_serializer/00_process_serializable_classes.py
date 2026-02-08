@@ -220,7 +220,7 @@ def discover_all_libraries(project_dir):
                     if lib_path_str not in seen_libraries:
                         seen_libraries.add(lib_path_str)
                         libraries.append(lib_root)
-                # Also check if it's a library with src/ directory (like arduino-core-src)
+                # Also check if it's a library with src/ directory (like arduino_core-src)
                 elif (lib_dir / "src").exists() and (lib_dir / "src").is_dir():
                     lib_root = lib_dir.resolve()
                     lib_path_str = str(lib_root)
