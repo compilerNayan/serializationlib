@@ -83,7 +83,7 @@ public:
      * @return The deserialized value of type ReturnType
      */
     template<typename ReturnType>
-    static ReturnType Deserialize(const StdString& input) {
+    static std::remove_cvref_t<ReturnType> Deserialize(const StdString& input) {
         if constexpr (is_optional_type_v<ReturnType>) {
             // Handle optional types (optional<T> or std::optional<T>)
             using ValueType = typename ReturnType::value_type;
@@ -139,7 +139,7 @@ public:
             return ReturnType(value);
         } else if constexpr (is_primitive_type_v<ReturnType>) {
             // Convert string to primitive type
-            return convert_string_to_primitive<ReturnType>(input);
+            return convert_string_to_primitive<std::remove_cvref_t<ReturnType>>(input);
         } else if constexpr (is_sequential_container_v<ReturnType>) {
             // Handle sequential containers (vector, list, deque, set, unordered_set, etc.)
             return deserialize_sequential_container<ReturnType>(input);
@@ -155,8 +155,9 @@ public:
             static_assert(std::is_enum_v<ReturnType> && false, "Enum deserialization specialization not found. Run S8_handle_enum_serialization.py for this enum.");
             return ReturnType(); // This line will never be reached due to static_assert
         } else {
-            // Call the type's Deserialize method
-            return ReturnType::Deserialize(input);
+            // Call the type's Deserialize method (use value type for reference types like const T&)
+            using ValueType = std::remove_cvref_t<ReturnType>;
+            return ValueType::Deserialize(input);
         }
     }
 
