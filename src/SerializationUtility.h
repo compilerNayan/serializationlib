@@ -22,6 +22,14 @@
 namespace nayan {
 namespace serializer {
 
+// C++11-compatible remove_cvref (std::remove_cvref_t is C++17)
+template<typename T>
+struct remove_cvref {
+    using type = typename std::remove_cv<typename std::remove_reference<T>::type>::type;
+};
+template<typename T>
+using remove_cvref_t = typename remove_cvref<T>::type;
+
 /**
 
  * Generic Serialization Utility
@@ -83,7 +91,7 @@ public:
      * @return The deserialized value of type ReturnType
      */
     template<typename ReturnType>
-    static std::remove_cvref_t<ReturnType> Deserialize(const StdString& input) {
+    static remove_cvref_t<ReturnType> Deserialize(const StdString& input) {
         if constexpr (is_optional_type_v<ReturnType>) {
             // Handle optional types (optional<T> or std::optional<T>)
             using ValueType = typename ReturnType::value_type;
@@ -139,7 +147,7 @@ public:
             return ReturnType(value);
         } else if constexpr (is_primitive_type_v<ReturnType>) {
             // Convert string to primitive type
-            return convert_string_to_primitive<std::remove_cvref_t<ReturnType>>(input);
+            return convert_string_to_primitive<remove_cvref_t<ReturnType>>(input);
         } else if constexpr (is_sequential_container_v<ReturnType>) {
             // Handle sequential containers (vector, list, deque, set, unordered_set, etc.)
             return deserialize_sequential_container<ReturnType>(input);
@@ -156,7 +164,7 @@ public:
             return ReturnType(); // This line will never be reached due to static_assert
         } else {
             // Call the type's Deserialize method (use value type for reference types like const T&)
-            using ValueType = std::remove_cvref_t<ReturnType>;
+            using ValueType = remove_cvref_t<ReturnType>;
             return ValueType::Deserialize(input);
         }
     }
@@ -820,39 +828,40 @@ StdString SerializeValue(const T& value) {
  * @return The deserialized value of type ReturnType
  */
 template<typename ReturnType>
-ReturnType DeserializeValue(const StdString& input) {
+remove_cvref_t<ReturnType> DeserializeValue(const StdString& input) {
+    using ValueType = remove_cvref_t<ReturnType>;
     // Check if primitive type
     constexpr bool is_primitive = 
-        std::is_same_v<ReturnType, int> || std::is_same_v<ReturnType, unsigned int> ||
-        std::is_same_v<ReturnType, long> || std::is_same_v<ReturnType, unsigned long> ||
-        std::is_same_v<ReturnType, short> || std::is_same_v<ReturnType, unsigned short> ||
-        std::is_same_v<ReturnType, char> || std::is_same_v<ReturnType, unsigned char> ||
-        std::is_same_v<ReturnType, bool> || std::is_same_v<ReturnType, float> ||
-        std::is_same_v<ReturnType, double> || std::is_same_v<ReturnType, size_t> ||
-        std::is_same_v<ReturnType, Int> || std::is_same_v<ReturnType, CInt> ||
-        std::is_same_v<ReturnType, UInt> || std::is_same_v<ReturnType, CUInt> ||
-        std::is_same_v<ReturnType, Long> || std::is_same_v<ReturnType, CLong> ||
-        std::is_same_v<ReturnType, ULong> || std::is_same_v<ReturnType, CULong> ||
-        std::is_same_v<ReturnType, UInt8> ||
-        std::is_same_v<ReturnType, Char> || std::is_same_v<ReturnType, CChar> ||
-        std::is_same_v<ReturnType, UChar> || std::is_same_v<ReturnType, CUChar> ||
-        std::is_same_v<ReturnType, Bool> || std::is_same_v<ReturnType, CBool> ||
-        std::is_same_v<ReturnType, Size> || std::is_same_v<ReturnType, CSize> ||
-        std::is_same_v<ReturnType, StdString> || std::is_same_v<ReturnType, CStdString>;
+        std::is_same_v<ValueType, int> || std::is_same_v<ValueType, unsigned int> ||
+        std::is_same_v<ValueType, long> || std::is_same_v<ValueType, unsigned long> ||
+        std::is_same_v<ValueType, short> || std::is_same_v<ValueType, unsigned short> ||
+        std::is_same_v<ValueType, char> || std::is_same_v<ValueType, unsigned char> ||
+        std::is_same_v<ValueType, bool> || std::is_same_v<ValueType, float> ||
+        std::is_same_v<ValueType, double> || std::is_same_v<ValueType, size_t> ||
+        std::is_same_v<ValueType, Int> || std::is_same_v<ValueType, CInt> ||
+        std::is_same_v<ValueType, UInt> || std::is_same_v<ValueType, CUInt> ||
+        std::is_same_v<ValueType, Long> || std::is_same_v<ValueType, CLong> ||
+        std::is_same_v<ValueType, ULong> || std::is_same_v<ValueType, CULong> ||
+        std::is_same_v<ValueType, UInt8> ||
+        std::is_same_v<ValueType, Char> || std::is_same_v<ValueType, CChar> ||
+        std::is_same_v<ValueType, UChar> || std::is_same_v<ValueType, CUChar> ||
+        std::is_same_v<ValueType, Bool> || std::is_same_v<ValueType, CBool> ||
+        std::is_same_v<ValueType, Size> || std::is_same_v<ValueType, CSize> ||
+        std::is_same_v<ValueType, StdString> || std::is_same_v<ValueType, CStdString>;
     
     if constexpr (is_primitive) {
         // Handle primitive types
-        return SerializationUtility::convert_string_to_primitive<ReturnType>(input);
-    } else if constexpr (std::is_enum_v<ReturnType>) {
+        return SerializationUtility::convert_string_to_primitive<ValueType>(input);
+    } else if constexpr (std::is_enum_v<ValueType>) {
         // Handle enum types - use template specialization if available
-        return SerializationUtility::Deserialize<ReturnType>(input);
-    } else if constexpr (SerializationUtility::is_sequential_container_v<ReturnType> || 
-                         SerializationUtility::is_associative_container_v<ReturnType>) {
+        return SerializationUtility::Deserialize<ValueType>(input);
+    } else if constexpr (SerializationUtility::is_sequential_container_v<ValueType> || 
+                         SerializationUtility::is_associative_container_v<ValueType>) {
         // Handle containers - use SerializationUtility::Deserialize
-        return SerializationUtility::Deserialize<ReturnType>(input);
+        return SerializationUtility::Deserialize<ValueType>(input);
     } else {
         // Handle serializable objects - call static Deserialize() method
-        return ReturnType::Deserialize(input);
+        return ValueType::Deserialize(input);
     }
 }
 
