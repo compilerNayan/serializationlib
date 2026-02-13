@@ -126,6 +126,29 @@ def extract_inner_type_from_optional(field_type: str) -> str:
     return field_type
 
 
+def is_sequential_container_type(inner_type: str) -> bool:
+    """
+    Check if the inner type is a sequential container (vector, list, etc.) from type string.
+    E.g., "Vector<DeviceInfoDto>", "std::vector<int>", "List<Foo>"
+    
+    Args:
+        inner_type: The inner type string (e.g. from extract_inner_type_from_optional)
+        
+    Returns:
+        True if the type looks like a sequential container
+    """
+    inner = inner_type.strip()
+    return (
+        inner.startswith('Vector<') or
+        inner.startswith('std::vector<') or
+        inner.startswith('List<') or
+        inner.startswith('std::list<') or
+        inner.startswith('Deque<') or
+        inner.startswith('std::deque<') or
+        inner.startswith('std::array<')
+    )
+
+
 def generate_serialization_methods(class_name: str, fields: List[Dict[str, str]], validation_fields_by_macro: Dict[str, List[Dict[str, str]]] = None) -> str:
     """
     Generate Serialize() and Deserialize() methods for a Dto class.
@@ -172,6 +195,7 @@ def generate_serialization_methods(class_name: str, fields: List[Dict[str, str]]
             # Check inner type characteristics
             is_primitive = any(prim in inner_type for prim in primitive_types)
             is_string = 'StdString' in inner_type or 'CStdString' in inner_type or 'string' in inner_type.lower()
+            is_sequential = is_sequential_container_type(inner_type)
             
             # Generate code to check if optional has value
             code_lines.append(f"        // Serialize optional field: {field_name}")
@@ -181,6 +205,17 @@ def generate_serialization_methods(class_name: str, fields: List[Dict[str, str]]
                 code_lines.append(f"            doc[\"{field_name}\"] = {field_name}.value().c_str();")
             elif is_primitive:
                 code_lines.append(f"            doc[\"{field_name}\"] = {field_name}.value();")
+            elif is_sequential:
+                # Optional of vector/list: SerializeValue returns JSON array string; parse and add as real array
+                code_lines.append(f"            // Serialize array: {field_name}")
+                code_lines.append(f"            StdString {field_name}_json = nayan::serializer::SerializeValue({field_name}.value());")
+                code_lines.append(f"            JsonDocument {field_name}_doc;")
+                code_lines.append(f"            DeserializationError {field_name}_error = deserializeJson({field_name}_doc, {field_name}_json.c_str());")
+                code_lines.append(f"            if ({field_name}_error == DeserializationError::Ok && {field_name}_doc.is<JsonArray>()) {{")
+                code_lines.append(f"                doc[\"{field_name}\"] = {field_name}_doc.as<JsonArray>();")
+                code_lines.append(f"            }} else {{")
+                code_lines.append(f"                doc[\"{field_name}\"] = nullptr;")
+                code_lines.append(f"            }}")
             else:
                 # For nested object/enum types in optional, use SerializeValue
                 # SerializeValue handles enums (via template specialization) and complex objects
@@ -344,6 +379,7 @@ def generate_serialization_methods(class_name: str, fields: List[Dict[str, str]]
             # Check inner type characteristics
             is_primitive = any(prim in inner_type for prim in primitive_types)
             is_string = 'StdString' in inner_type or 'CStdString' in inner_type or 'string' in inner_type.lower()
+            is_sequential = is_sequential_container_type(inner_type)
             
             # For validated fields, directly assign (already validated above)
             # For optional fields, check if key exists and is not null
@@ -372,6 +408,12 @@ def generate_serialization_methods(class_name: str, fields: List[Dict[str, str]]
                         code_lines.append(f"        obj.{field_name} = doc[\"{field_name}\"].as<char>();")
                     else:
                         code_lines.append(f"        obj.{field_name} = doc[\"{field_name}\"].as<{inner_type}>();")
+                elif is_sequential:
+                    code_lines.append(f"        // Deserialize array: {field_name}")
+                    code_lines.append(f"        JsonArray {field_name}_arr = doc[\"{field_name}\"].as<JsonArray>();")
+                    code_lines.append(f"        StdString {field_name}_json;")
+                    code_lines.append(f"        serializeJson({field_name}_arr, {field_name}_json);")
+                    code_lines.append(f"        obj.{field_name} = nayan::serializer::DeserializeValue<{inner_type}>({field_name}_json);")
                 else:
                     # For nested object types in optional (including enums)
                     code_lines.append(f"        // Deserialize nested object or enum: {field_name}")
@@ -399,6 +441,12 @@ def generate_serialization_methods(class_name: str, fields: List[Dict[str, str]]
                         code_lines.append(f"            obj.{field_name} = doc[\"{field_name}\"].as<char>();")
                     else:
                         code_lines.append(f"            obj.{field_name} = doc[\"{field_name}\"].as<{inner_type}>();")
+                elif is_sequential:
+                    code_lines.append(f"            // Deserialize array: {field_name}")
+                    code_lines.append(f"            JsonArray {field_name}_arr = doc[\"{field_name}\"].as<JsonArray>();")
+                    code_lines.append(f"            StdString {field_name}_json;")
+                    code_lines.append(f"            serializeJson({field_name}_arr, {field_name}_json);")
+                    code_lines.append(f"            obj.{field_name} = nayan::serializer::DeserializeValue<{inner_type}>({field_name}_json);")
                 else:
                     # For nested object types in optional (including enums)
                     code_lines.append(f"            // Deserialize nested object or enum: {field_name}")
@@ -735,6 +783,7 @@ __all__ = [
     'add_include_if_needed',
     'is_optional_type',
     'extract_inner_type_from_optional',
+    'is_sequential_container_type',
     'generate_serialization_methods',
     'mark_dto_annotation_processed',
     'comment_dto_macro',  # Keep for backward compatibility

@@ -794,6 +794,9 @@ StdString SerializeValue(const T& value) {
     if constexpr (is_primitive) {
         // Handle primitive types
         return SerializationUtility::convert_primitive_to_string(value);
+    } else if constexpr (SerializationUtility::is_sequential_container_v<T>) {
+        // Handle sequential containers (vector, list, deque, etc.)
+        return SerializationUtility::Serialize(value);
     } else if constexpr (std::is_enum_v<T>) {
         // Handle enum types - template specialization should be provided by S8_handle_enum_serialization.py
         // The specialization will be automatically selected by the compiler when calling Serialize<T>
