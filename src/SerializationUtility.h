@@ -406,7 +406,7 @@ public:
         JsonArray array = doc.to<JsonArray>();
         
         // Special handling for vector<bool> which uses a proxy type
-        if constexpr (std::is_same_v<Container, std::vector<bool>> || std::is_same_v<Container, vector<bool>>) {
+        if constexpr (std::is_same_v<Container, std::vector<bool>> || std::is_same_v<Container, std::vector<bool>>) {
             for (size_t i = 0; i < container.size(); ++i) {
                 bool boolValue = container[i];
                 array.add(boolValue);
