@@ -152,7 +152,7 @@ public:
             // Handle sequential containers (vector, list, deque, set, unordered_set, etc.)
             return deserialize_sequential_container<ReturnType>(input);
         } else if constexpr (is_associative_container_v<ReturnType>) {
-            // Handle associative containers (Map, UnorderedMap)
+            // Handle associative containers (StdMap, StdUnorderedMap)
             return deserialize_associative_container<ReturnType>(input);
         } else if constexpr (std::is_enum_v<ReturnType>) {
             // Handle enum types - template specialization should be provided by S8_handle_enum_serialization.py
@@ -240,7 +240,7 @@ public:
         static constexpr bool value = true;
     };
     
-    // Note: StandardDefines typedefs (vector, list, etc.) and template aliases (Vector, List, etc.)
+    // Note: StandardDefines template aliases (StdVector, StdList, etc.)
     // all resolve to std:: types, so they are handled by the std:: specializations above.
     // No additional specializations are needed since template aliases don't create new types.
     
@@ -278,14 +278,14 @@ public:
         static constexpr bool value = true;
     };
     
-    // Handle StandardDefines typedefs (Map, UnorderedMap)
+    // Handle StandardDefines aliases (StdMap, StdUnorderedMap)
     template<typename Key, typename Value>
-    struct is_associative_container<Map<Key, Value>> {
+    struct is_associative_container<StdMap<Key, Value>> {
         static constexpr bool value = true;
     };
     
     template<typename Key, typename Value>
-    struct is_associative_container<UnorderedMap<Key, Value>> {
+    struct is_associative_container<StdUnorderedMap<Key, Value>> {
         static constexpr bool value = true;
     };
     
@@ -458,7 +458,7 @@ public:
     }
     
     /**
-     * Helper type trait to detect std::array (used for Array alias detection)
+     * Helper type trait to detect std::array (used for StdArray alias detection)
      */
     template<typename T>
     struct is_std_array_type : std::false_type {};
@@ -513,22 +513,22 @@ public:
         }
         
         // Add to container based on container type
-        // Helper to detect if container is Set/UnorderedSet
+        // Helper to detect if container is StdSet/StdUnorderedSet
         constexpr bool isSetType = std::is_same_v<Container, std::set<ValueType>> ||
-                                  std::is_same_v<Container, Set<ValueType>> ||
+                                  std::is_same_v<Container, StdSet<ValueType>> ||
                                   std::is_same_v<Container, std::unordered_set<ValueType>> ||
-                                  std::is_same_v<Container, UnorderedSet<ValueType>>;
+                                  std::is_same_v<Container, StdUnorderedSet<ValueType>>;
         
-        // Helper to detect if container is Array (std::array or Array alias)
-        // Since Array<T, N> is an alias for std::array<T, N>, we check for std::array
+        // Helper to detect if container is StdArray (std::array or StdArray alias)
+        // Since StdArray<T, N> is an alias for std::array<T, N>, we check for std::array
         constexpr bool isArrayType = std::is_array_v<Container> || 
                                      is_std_array_type<Container>::value;
         
         if constexpr (isSetType) {
-            // Set and UnorderedSet use insert
+            // StdSet and StdUnorderedSet use insert
             container.insert(deserializedValue);
         } else if constexpr (isArrayType) {
-            // Array uses indexing (fixed size)
+            // StdArray uses indexing (fixed size)
             if constexpr (std::is_array_v<Container>) {
                 if (index < std::extent_v<Container>) {
                     container[index] = deserializedValue;
@@ -540,16 +540,16 @@ public:
                 }
             }
         } else {
-            // Vector, List, Deque use push_back
+            // StdVector, StdList, StdDeque use push_back
             container.push_back(deserializedValue);
         }
     }
     
     /**
      * Deserialize a JSON array string to a sequential container.
-     * Supports: Vector, List, Deque, Set, UnorderedSet, Array
+     * Supports: StdVector, StdList, StdDeque, StdSet, StdUnorderedSet, StdArray
      * 
-     * @tparam Container The container type to deserialize to (e.g., Vector<ProductX>, Set<int>, Array<Person, 3>)
+     * @tparam Container The container type to deserialize to (e.g., StdVector<ProductX>, StdSet<int>, StdArray<Person, 3>)
      * @param input The JSON array string
      * @return The deserialized container
      */
@@ -574,20 +574,20 @@ public:
         // Get the value type of the container
         using ValueType = typename Container::value_type;
         
-        // Check if it's an Array (fixed size) and validate size
+        // Check if it's an StdArray (fixed size) and validate size
         if constexpr (std::is_array_v<Container>) {
             // C-style array
             constexpr size_t arraySize = std::extent_v<Container>;
             if (jsonArray.size() != arraySize) {
                 throw std::invalid_argument("JSON array size (" + std::to_string(jsonArray.size()) + 
-                                          ") does not match Array size (" + std::to_string(arraySize) + ")");
+                                          ") does not match StdArray size (" + std::to_string(arraySize) + ")");
             }
         } else if constexpr (is_std_array_type<Container>::value) {
-            // std::array or Array - validate size
+            // std::array or StdArray - validate size
             constexpr size_t arraySize = std::tuple_size_v<Container>;
             if (jsonArray.size() != arraySize) {
                 throw std::invalid_argument("JSON array size (" + std::to_string(jsonArray.size()) + 
-                                          ") does not match Array size (" + std::to_string(arraySize) + ")");
+                                          ") does not match StdArray size (" + std::to_string(arraySize) + ")");
             }
         }
         
@@ -602,9 +602,9 @@ public:
     }
     
     /**
-     * Deserialize a JSON object string to an associative container (Map, UnorderedMap).
+     * Deserialize a JSON object string to an associative container (StdMap, StdUnorderedMap).
      * 
-     * @tparam MapType The map type to deserialize to (e.g., Map<StdString, ProductX>, UnorderedMap<int, Person>)
+     * @tparam MapType The map type to deserialize to (e.g., StdMap<StdString, ProductX>, StdUnorderedMap<int, Person>)
      * @param input The JSON object string
      * @return The deserialized map
      */
