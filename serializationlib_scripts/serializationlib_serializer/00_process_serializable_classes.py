@@ -250,6 +250,77 @@ def discover_all_libraries(project_dir):
     return libraries
 
 
+# Set of file paths already processed (loaded from client's src/generated/serializationlib.dat).
+_already_processed_paths = set()
+
+
+def _load_already_processed_paths(project_dir):
+    """
+    Read client's src/generated/serializationlib.dat; each line is one file path.
+    Return a set of normalized absolute paths. If the file is missing or unreadable, return empty set.
+    """
+    if not project_dir:
+        return set()
+    dat_path = os.path.join(project_dir, "src", "generated", "serializationlib.dat")
+    if not os.path.isfile(dat_path):
+        return set()
+    result = set()
+    try:
+        with open(dat_path, "r", encoding="utf-8") as f:
+            for line in f:
+                path = line.strip()
+                if path:
+                    result.add(os.path.normpath(os.path.abspath(path)))
+    except (OSError, IOError):
+        return set()
+    return result
+
+
+def is_processing_required(file_path):
+    """
+    Determine whether the given file should be processed by the serializer.
+    Return True to process the file, False to skip it.
+    Uses the set of paths loaded from the client's serializationlib.dat (already processed => skip).
+    """
+    if not file_path:
+        return True
+    normalized = os.path.normpath(os.path.abspath(file_path))
+    return normalized not in _already_processed_paths
+
+
+def _is_client_project_file(project_dir, file_path):
+    """
+    Return True if file_path is under project_dir (the executable/client project),
+    i.e. not from an intermediate library (e.g. build/_deps/, .pio/libdeps/).
+    """
+    if not project_dir or not file_path:
+        return False
+    try:
+        project_abs = os.path.abspath(project_dir)
+        file_abs = os.path.abspath(file_path)
+        return file_abs == project_abs or file_abs.startswith(project_abs + os.sep)
+    except (ValueError, OSError):
+        return False
+
+
+def _append_processed_file_to_client_log(project_dir, file_path, dry_run=False):
+    """
+    In the client (executable) project only, append the processed file path to
+    src/generated/serializationlib.dat. Creates src/generated/ and the file if missing.
+    Only writes when file_path is under project_dir and not dry_run.
+    """
+    if dry_run or not project_dir or not _is_client_project_file(project_dir, file_path):
+        return
+    try:
+        generated_dir = os.path.join(project_dir, "src", "generated")
+        os.makedirs(generated_dir, exist_ok=True)
+        dat_path = os.path.join(generated_dir, "serializationlib.dat")
+        with open(dat_path, "a", encoding="utf-8") as f:
+            f.write(file_path + "\n")
+    except (OSError, IOError):
+        pass
+
+
 def process_all_serializable_classes(dry_run=False, serializable_macro=None):
     """
     Process all client files that contain classes with @Serializable annotation.
@@ -281,6 +352,10 @@ def process_all_serializable_classes(dry_run=False, serializable_macro=None):
     
     if not project_dir:
         return 0
+
+    # Load set of already-processed paths from client's src/generated/serializationlib.dat
+    global _already_processed_paths
+    _already_processed_paths = _load_already_processed_paths(project_dir)
     
     # Get client header files using get_client_files function
     if get_client_files is None:
@@ -316,7 +391,9 @@ def process_all_serializable_classes(dry_run=False, serializable_macro=None):
     for file_path in header_files:
         if not os.path.exists(file_path):
             continue
-        
+        if not is_processing_required(file_path):
+            continue
+
         # First, check if file has enum with @Serializable annotation
         enum_info = S8_handle_enum_serialization.check_enum_annotation(file_path, serializable_macro)
         if enum_info and enum_info.get('has_enum'):
@@ -344,7 +421,8 @@ def process_all_serializable_classes(dry_run=False, serializable_macro=None):
                         # Mark annotation as processed
                         S8_handle_enum_serialization.mark_enum_annotation_processed(file_path, annotation_line, dry_run=False)
                         processed_count += 1
-        
+                        _append_processed_file_to_client_log(project_dir, file_path, dry_run=dry_run)
+
         # Check if file has @Serializable annotation (for classes)
         dto_info = S1_check_dto_macro.check_dto_macro(file_path, serializable_macro)
         
@@ -413,6 +491,7 @@ def process_all_serializable_classes(dry_run=False, serializable_macro=None):
             if not dry_run:
                 S3_inject_serialization.comment_dto_macro(file_path, dry_run=False, serializable_macro=serializable_macro)
             processed_count += 1
+            _append_processed_file_to_client_log(project_dir, file_path, dry_run=dry_run)
             # print(f"   ✅ Successfully processed {class_name}")
             # print(f"   ✅ Successfully processed {class_name}")
         else:
