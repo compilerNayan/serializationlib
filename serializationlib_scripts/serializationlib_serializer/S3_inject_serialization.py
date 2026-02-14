@@ -139,10 +139,13 @@ def is_sequential_container_type(inner_type: str) -> bool:
     """
     inner = inner_type.strip()
     return (
+        inner.startswith('StdVector<') or
         inner.startswith('Vector<') or
         inner.startswith('std::vector<') or
+        inner.startswith('StdList<') or
         inner.startswith('List<') or
         inner.startswith('std::list<') or
+        inner.startswith('StdDeque<') or
         inner.startswith('Deque<') or
         inner.startswith('std::deque<') or
         inner.startswith('std::array<')
