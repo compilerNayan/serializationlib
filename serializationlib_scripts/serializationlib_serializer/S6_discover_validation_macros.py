@@ -14,9 +14,7 @@ import sys
 from pathlib import Path
 from typing import Dict, List, Optional
 
-# print("Executing NayanSerializer/scripts/serializer/S6_discover_validation_macros.py")
-# print("Executing NayanSerializer/scripts/serializer/S6_discover_validation_macros.py")
-# Import get_client_files from serializationlib_core
+# Import get_std_file_discovery (uses cpp_core get_all_files_std)
 # First, find the serializationlib_scripts directory to add to path
 try:
     script_file = os.path.abspath(__file__)
@@ -46,22 +44,14 @@ except NameError:
                 break
             search_dir = parent
 
-# Add to path and import
-get_client_files = None
+# Add to path and import (cpp_core get_all_files_std - core library, included everywhere)
 if serializationlib_scripts_dir and os.path.exists(serializationlib_scripts_dir):
     core_dir = os.path.join(serializationlib_scripts_dir, 'serializationlib_core')
     if os.path.exists(core_dir):
         sys.path.insert(0, core_dir)
-        try:
-            from serializationlib_get_client_files import get_client_files
-        except ImportError as e:
-            # print(f"Warning: Could not import get_client_files: {e}")
-            # print(f"Warning: Could not import get_client_files: {e}")
-            pass
-        # print(f"Warning: Could not find serializationlib_core directory at {core_dir}")
-        # print(f"Warning: Could not find serializationlib_core directory at {core_dir}")
-    # print(f"Warning: Could not find serializationlib_scripts directory")
-    # print(f"Warning: Could not find serializationlib_scripts directory")
+        from get_std_file_discovery import find_and_import_get_all_files_std
+
+
 def find_validation_macro_definitions(search_directories: List[str] = None) -> Dict[str, str]:
     """
     Discover all validation macros by scanning files for the pattern:
@@ -72,7 +62,7 @@ def find_validation_macro_definitions(search_directories: List[str] = None) -> D
     - #define NotNull /* Validation Function -> nayan::validation::DtoValidationUtility::ValidateNotNull */
     
     Args:
-        search_directories: List of directories to search (default: uses get_client_files for project_dir and library_dir)
+        search_directories: List of directories to search (default: uses cpp_core get_all_files_std for project + libraries)
         
     Returns:
         Dictionary mapping macro names to validation function names
@@ -88,55 +78,16 @@ def find_validation_macro_definitions(search_directories: List[str] = None) -> D
     
     header_files = []
     
-    # If search_directories is None, use get_client_files to get files from both project_dir and library_dir
     if search_directories is None:
-        if get_client_files is not None:
-            # Get project_dir and library_dir from environment variables (set by execute_scripts)
-            # or from module globals as fallback
-            project_dir = os.environ.get('PROJECT_DIR') or os.environ.get('CMAKE_PROJECT_DIR')
-            library_dir = os.environ.get('LIBRARY_DIR')
-            
-            # Fallback to globals if environment variables not set
-            if not project_dir and 'project_dir' in globals():
-                project_dir = globals()['project_dir']
-            if not library_dir and 'library_dir' in globals():
-                library_dir = globals()['library_dir']
-            
-            # Get header files from project_dir (client project)
-            if project_dir:
-                try:
-                    project_header_files = get_client_files(project_dir, file_extensions=['.h', '.hpp'])
-                    header_files.extend(project_header_files)
-                except Exception as e:
-                    # print(f"Warning: Failed to get client files from project_dir: {e}")
-                    # print(f"Warning: Failed to get client files from project_dir: {e}")
-                    pass
-            # Get files from library_dir (all files, not just headers, since validation macros might be in any file)
-            if library_dir:
-                try:
-                    library_files = get_client_files(library_dir, skip_exclusions=True)
-                    # Filter to only header files for consistency
-                    library_header_files = [f for f in library_files if f.endswith(('.h', '.hpp'))]
-                    header_files.extend(library_header_files)
-                except Exception as e:
-                    # print(f"Warning: Failed to get library files from library_dir: {e}")
-                    # print(f"Warning: Failed to get library files from library_dir: {e}")
-                    pass
-            search_directories = []  # Will use file list instead
-        else:
-            # Fallback: Check if client_files is available in global scope
-            if 'client_files' in globals():
-                # Use client_files - filter to only header files
-                header_files = [f for f in globals()['client_files'] if f.endswith(('.h', '.hpp'))]
-                search_directories = []  # Will use file list instead
-            else:
-                # Fallback to default directories
-                # print(f"Warning: get_client_files is None and no client_files in globals, using fallback directories")
-                # print(f"Warning: get_client_files is None and no client_files in globals, using fallback directories")
-                pass
-    else:
-        # search_directories was provided, use directory-based search
-        pass
+        project_dir = os.environ.get('PROJECT_DIR') or os.environ.get('CMAKE_PROJECT_DIR')
+        if not project_dir and 'project_dir' in globals():
+            project_dir = globals()['project_dir']
+        get_all_files_std = find_and_import_get_all_files_std(project_dir)
+        header_files = get_all_files_std(
+            project_dir,
+            file_extensions=['.h', '.hpp'],
+            include_libraries=True,
+        )
     
     # If we have header_files list, use it directly
     if header_files:

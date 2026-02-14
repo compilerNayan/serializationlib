@@ -13,7 +13,7 @@ from pathlib import Path
 
 # print("Executing NayanSerializer/scripts/serializer/00_process_serializable_classes.py")
 # print("Executing NayanSerializer/scripts/serializer/00_process_serializable_classes.py")
-# Import get_client_files from serializationlib_core
+# Import get_std_file_discovery (uses cpp_core get_all_files_std)
 # First, find the serializationlib_scripts directory to add to path
 try:
     script_file = os.path.abspath(__file__)
@@ -43,22 +43,12 @@ except NameError:
                 break
             search_dir = parent
 
-# Add to path and import
-get_client_files = None
+# Add to path and import (cpp_core get_all_files_std - core library, included everywhere)
 if serializationlib_scripts_dir and os.path.exists(serializationlib_scripts_dir):
     core_dir = os.path.join(serializationlib_scripts_dir, 'serializationlib_core')
     if os.path.exists(core_dir):
         sys.path.insert(0, core_dir)
-        try:
-            from serializationlib_get_client_files import get_client_files
-        except ImportError as e:
-            # print(f"Warning: Could not import get_client_files: {e}")
-            # print(f"Warning: Could not import get_client_files: {e}")
-            pass
-        # print(f"Warning: Could not find serializationlib_core directory at {core_dir}")
-        # print(f"Warning: Could not find serializationlib_core directory at {core_dir}")
-    # print(f"Warning: Could not find serializationlib_scripts directory")
-    # print(f"Warning: Could not find serializationlib_scripts directory")
+        from get_std_file_discovery import find_and_import_get_all_files_std
 # Import the serializer scripts
 # Determine script_dir - where this script and other serializer scripts are located
 try:
@@ -281,32 +271,14 @@ def process_all_serializable_classes(dry_run=False, serializable_macro=None):
     
     if not project_dir:
         return 0
-    
-    # Get client header files using get_client_files function
-    if get_client_files is None:
-        return 0
-    
-    # Discover all libraries in build/_deps/
-    all_libraries = discover_all_libraries(project_dir)
-    
-    # Collect header files from project_dir and all discovered libraries
-    header_files = []
-    
-    # Get files from project_dir
-    try:
-        project_files = get_client_files(project_dir, file_extensions=['.h', '.hpp'])
-        header_files.extend(project_files)
-    except Exception as e:
-        pass
-    
-    # Get files from all discovered libraries
-    for lib_dir in all_libraries:
-        try:
-            lib_files = get_client_files(str(lib_dir), skip_exclusions=True, file_extensions=['.h', '.hpp'])
-            header_files.extend(lib_files)
-        except Exception as e:
-            pass
-    
+
+    get_all_files_std = find_and_import_get_all_files_std(project_dir)
+    header_files = get_all_files_std(
+        project_dir,
+        file_extensions=['.h', '.hpp'],
+        include_libraries=True,
+    )
+
     if not header_files:
         return 0
     

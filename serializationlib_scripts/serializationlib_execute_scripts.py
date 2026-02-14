@@ -1,13 +1,12 @@
 """
 Script to execute client file processing.
-This script imports get_client_files and processes the client project files.
+Uses cpp_core get_all_files_std for file discovery (core library, included everywhere).
 """
 
 import os
 import sys
 import importlib.util
 import traceback
-from serializationlib_core.serializationlib_get_client_files import get_client_files
 
 
 def execute_scripts(project_dir, library_dir, serializable_macro="Serializable"):
@@ -19,22 +18,10 @@ def execute_scripts(project_dir, library_dir, serializable_macro="Serializable")
         library_dir: Path to the library directory
         serializable_macro: Name of the macro to search for (default: "Serializable")
     """
-    # Set project_dir in globals so serializer scripts can access it
     globals()['project_dir'] = project_dir
     globals()['library_dir'] = library_dir
     globals()['serializable_macro'] = serializable_macro
-    
-    if project_dir:
-        try:
-            client_files = get_client_files(project_dir, file_extensions=['.h', '.cpp'])
-        except Exception as e:
-            traceback.print_exc()
-    
-    if library_dir:
-        try:
-            library_files = get_client_files(library_dir, skip_exclusions=True)
-        except Exception as e:
-            traceback.print_exc()
+
     # Run the master serializer script (00_process_serializable_classes.py)
     # Find the serializer directory
     try:
